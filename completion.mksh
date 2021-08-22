@@ -49,26 +49,27 @@ function _fzf_complete {
     comp_y="${comp[${#comp[@]}-1]}"
     comp_n="${curr_0}${curr_1}"
     if [ ${#comp_y} -ne ${#comp_n} ]; then
-        print -r -- "$1"
+        print -r -- "$1"
     else
         local sel
         local res
         sel=$(_fzf_get_completion_candidates "${comp[@]}")
         if [[ "$sel" = '' ]]; then
-            print -r -- "$1"
+            print -rn -- "${1%${comp_y}}"
+            print -r -- "$2$3"
         else
             res=$(print -n "$sel" |
                 fzf --no-info --prompt="› $comp_y" --reverse -0 -1)
             if [[ $res = *[![:space:]]* ]]; then
-                unset comp["${#comp[@]}"-1]
                 print -rn -- "${1%${comp_y}}"
                 print -rn -- $(__mksh_escape "$res")
                 if [[ ! "${res: -1}" = '/' ]]; then
-                    print -r -- ' '
+                    print -rn -- ' '
                 fi
             else
-                print -r -- "$1"
+                print -rn -- "$1"
             fi
+            print -r -- ''
         fi
     fi
 }
@@ -90,5 +91,5 @@ bind '^W'='kill-region'
 # '^a^x^xQ'           : quote from the beginning of the line to the end of the current word ($1)
 # '^a _fzf_complete ' : go to beginning of line, set a mark, type func name
 # '^b^xC^h^e'       : go back to ^B mark and delete it; evaluate
-# from here, we set a mark at beginning, add our command at beginning, go to end, and evaluate
-bind -m '^I'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e'
+# '^a^xC^h'         : _fzf_complete adds a mark indicating where the cursor needs to be
+bind -m '^I'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e^a^xC^h'
