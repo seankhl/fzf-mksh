@@ -1,62 +1,94 @@
 #!/bin/mksh
 
-function __mksh_completion_get_matches {
+function _fzf_get_completion_candidates {
     local args
     set -A args -- "$@"
     local matches
-    if [ "${#args[@]}" -gt 1 ]; then
+    if [ ${#args[@]} -gt 1 ]; then
         last_arg="${args[${#args[@]}-1]}"
         if [[ $last_arg = *[*?]* ]]; then
-            eval "set -A matches -- $last_arg";
+            eval "set -A matches -- $last_arg"
         else
-            set -A matches -- "$last_arg"*;
+            set -A matches -- "$last_arg"*
         fi
         for match in "${matches[@]}"; do
-            if [[ -d "${match}" ]]; then
-                print -r -- "${match}/"
-            else
-                print -r -- "${match} "
+            if [[ "${match}" != "$last_arg*" ]]; then
+                if [[ -d "${match}" ]]; then
+                    print -r -- "${match}/"
+                else
+                    print -r -- "${match}"
+                fi
             fi
         done
     elif [ "${#args[@]}" -eq 1 ] || [ "${#args[@]}" -eq 0 ]; then
         local paths
         set -o noglob; IFS=:; set -A paths -- $PATH; IFS=$' \t\n'; set +o noglob
         for path in "${paths[@]}"; do
-            matches+=(${path:-.}/"$@"*);
+            matches+=(${path:-.}/"$@"*)
         done
         for match in "${matches[@]}"; do
-            print -r -- "${match##*/} "
-        done |  LC_ALL=C sort -u | rg -v "$text\*"
+            if [[ "${match##*/}" != "$@*" ]]; then
+                print -r -- "${match##*/}"
+            fi
+        done | LC_ALL=C sort -u
     fi
 }
 
-__fzf_complete__() {
-    if [[ ! "$1" = "$2" ]]; then
-        print -n "$1"
+function _fzf_complete {
+    local comp
+    local curr_0
+    local curr_1
+    local comp_y
+    local comp_n
+    set -A comp -- $1
+    if [ "${1: -1}" = ' ' ]; then
+        comp+=('')
+    fi
+    curr_0="$2"
+    curr_1="$3"
+    comp_y="${comp[${#comp[@]}-1]}"
+    comp_n="${curr_0}${curr_1}"
+    if [ ${#comp_y} -ne ${#comp_n} ]; then
+        print -r -- "$1"
     else
-        local args
-        set -A args -- $1
-        if [ " " = "${1: -1}" ]; then
-            args+=("")
-        fi
         local sel
-        sel=$(__mksh_completion_get_matches "${args[@]}" | \
-            fzf-tmux -p60%,40% --no-info --prompt="› $1" --reverse -0 -1)
-        if [[ $sel = *[![:space:]]* ]]; then
-            unset "args[${#args[@]}-1]" && print -n "${args[@]}" "$sel"
+        local res
+        sel=$(_fzf_get_completion_candidates "${comp[@]}")
+        if [[ "$sel" = '' ]]; then
+            print -r -- "$1"
         else
-            print -n "${args[@]}"
+            res=$(print -n "$sel" |
+                fzf-tmux -p60%,40% --no-info --prompt="› $comp_y" --reverse -0 -1)
+            if [[ $res = *[![:space:]]* ]]; then
+                unset comp["${#comp[@]}"-1]
+                print -rn -- "${1%${comp_y}}"
+                print -rn -- $(__mksh_escape "$res")
+                if [[ ! "${res: -1}" = '/' ]]; then
+                    print -r -- ' '
+                fi
+            else
+                print -r -- "$1"
+            fi
         fi
     fi
 }
 
-# ' '             : set mark at cursor start
-# ''              : copy the whole line
-# ' '             : paste back the whole line, adding a space (to separate args)
-# ' Q'        : paste back another copy of the whole line, and quote ($2)
-# '^b'          : go back to the end of the first copy of the whole line
-# ''            : complete, if possible
-# ' Q'    : quote from beginning of line to end of completion ($1)
-# ''              : goto beginning
+# we need kill-region to be bound to something
+bind '^W'='kill-region'
+# '^v^a'                : special mark ^A
+# '^xD F^w^y ^y'    : move to left of mark, copy "current word, right of cursor", paste
+# '^x^x^xC^h'           : go back to beginning of word and delete the pasted special mark
+# '^x^xQ'             : quote the "current word, right of cursor" pasted text ($3)
+# '^v^b'                : special mark ^B
+# '^a'              : go back to the original cursor position (special mark ^A)
+# '^xC B^x^x^w^y'   : go to right of special mark, copy "current word, left of cursor, paste
+# '^xDF  ^y^hQ'   : paste a quoted copy of the "current word, left of cursor" ($2)
+# '^a^xC^h'     : go to original cursor position and try to complete
+# '^v^a'                : add the ^A mark we just deleted back; had to remove it to do completion
+# '^xDF '           : go to end of current word; if word was '', the ^A mark is necessary
+# '^a^xC^h^x^x '  : go back to the ^A mark, remove it, go back again, and set a mark
+# '^a^x^xQ'           : quote from the beginning of the line to the end of the current word ($1)
+# '^a _fzf_complete ' : go to beginning of line, set a mark, type func name
+# '^b^xC^h^e'       : go back to ^B mark and delete it; evaluate
 # from here, we set a mark at beginning, add our command at beginning, go to end, and evaluate
-bind -m '^[f'=' ^u^y  ^yQ^x^x^b ^a^x^xQ^a __fzf_complete__ ^e^e^a^e'
+bind -m '^[f'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e'
