@@ -58,7 +58,7 @@ function _fzf_complete {
             print -r -- "$1"
         else
             res=$(print -n "$sel" |
-                fzf-tmux -p60%,40% --no-info --prompt="› $comp_y" --reverse -0 -1)
+                fzf --no-info --prompt="› $comp_y" --reverse -0 -1)
             if [[ $res = *[![:space:]]* ]]; then
                 unset comp["${#comp[@]}"-1]
                 print -rn -- "${1%${comp_y}}"
