@@ -91,4 +91,4 @@ bind '^W'='kill-region'
 # '^a _fzf_complete ' : go to beginning of line, set a mark, type func name
 # '^b^xC^h^e'       : go back to ^B mark and delete it; evaluate
 # from here, we set a mark at beginning, add our command at beginning, go to end, and evaluate
-bind -m '^[f'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e'
+bind -m '^I'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e'
