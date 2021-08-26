@@ -77,8 +77,10 @@ function __fzf_complete {
             print -rn -- "${1%${comp_y}}"
             print -r -- "$2$3"
         else
-            res=$(print -n "$sel" |
-                fzf --no-info --prompt="› $comp_y" --reverse -0 -1)
+            res=$(
+                print -n "$sel" |
+                    FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --bind=ctrl-z:ignore --no-info --prompt=\"› $1\" -0 -1 +m" $(__fzf_cmd)
+            )
             if [[ $res = *[![:space:]]* ]]; then
                 print -rn -- "${1%${comp_y}}"
                 print -rn -- $(__mksh_escape "$res")
