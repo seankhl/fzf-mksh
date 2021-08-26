@@ -1,6 +1,25 @@
 #!/bin/mksh
 
-function _fzf_get_completion_candidates {
+#TODO:
+#  - something is up with escaping/quoting and the glob to get candidates
+#    ls Tournament\ Machu/test<__fzf_complete> -> nothing, should be test.txt^ntest2.txt
+#  - ./ at beginning of line (i.e. for the first word)
+#
+#CASES:
+#  - {unambig_complete, ambig_complete, no_complete}            x 
+#    {start_of_word, middle_of_word, end_of_word, empty_word}   x
+#    {first_word, middle_word, last_word}
+#  - various numbers of spaces before and after the above cases
+#  - spaces in various parts of input, as well as returned text
+#  - "./" as first word (should match files, never commands)
+#  - "$(" or "`" before cursor (should match commands, never files)
+
+fzf_mksh_abs="$(readlink -f $_)"
+fzf_mksh_dir="$(dirname $fzf_mksh_abs)"
+. "$fzf_mksh_dir/utils.mksh"
+unset fzf_mksh_abs fzf_mksh_dir
+
+function __fzf_get_completion_candidates {
     local args
     set -A args -- "$@"
     local matches
@@ -34,7 +53,7 @@ function _fzf_get_completion_candidates {
     fi
 }
 
-function _fzf_complete {
+function __fzf_complete {
     local comp
     local curr_0
     local curr_1
@@ -53,7 +72,7 @@ function _fzf_complete {
     else
         local sel
         local res
-        sel=$(_fzf_get_completion_candidates "${comp[@]}")
+        sel=$(__fzf_get_completion_candidates "${comp[@]}")
         if [[ "$sel" = '' ]]; then
             print -rn -- "${1%${comp_y}}"
             print -r -- "$2$3"
@@ -74,22 +93,24 @@ function _fzf_complete {
     fi
 }
 
-# we need kill-region to be bound to something
-bind '^W'='kill-region'
-# '^v^a'                : special mark ^A
-# '^xD F^w^y ^y'    : move to left of mark, copy "current word, right of cursor", paste
-# '^x^x^xC^h'           : go back to beginning of word and delete the pasted special mark
-# '^x^xQ'             : quote the "current word, right of cursor" pasted text ($3)
-# '^v^b'                : special mark ^B
-# '^a'              : go back to the original cursor position (special mark ^A)
-# '^xC B^x^x^w^y'   : go to right of special mark, copy "current word, left of cursor, paste
-# '^xDF  ^y^hQ'   : paste a quoted copy of the "current word, left of cursor" ($2)
-# '^a^xC^h'     : go to original cursor position and try to complete
-# '^v^a'                : add the ^A mark we just deleted back; had to remove it to do completion
-# '^xDF '           : go to end of current word; if word was '', the ^A mark is necessary
-# '^a^xC^h^x^x '  : go back to the ^A mark, remove it, go back again, and set a mark
-# '^a^x^xQ'           : quote from the beginning of the line to the end of the current word ($1)
-# '^a _fzf_complete ' : go to beginning of line, set a mark, type func name
-# '^b^xC^h^e'       : go back to ^B mark and delete it; evaluate
-# '^a^xC^h'         : _fzf_complete adds a mark indicating where the cursor needs to be
-bind -m '^I'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a _fzf_complete ^b^xC^h^e^a^xC^h'
+if [[ ! -o vi ]]; then
+    # we need kill-region to be bound to something
+    bind '^W'='kill-region'
+    # '^v^a'                : special mark ^A
+    # '^xD F^w^y ^y'    : move to left of mark, copy "current word, right of cursor", paste
+    # '^x^x^xC^h'           : go back to beginning of word and delete the pasted special mark
+    # '^x^xQ'             : quote the "current word, right of cursor" pasted text ($3)
+    # '^v^b'                : special mark ^B
+    # '^a'              : go back to the original cursor position (special mark ^A)
+    # '^xC B^x^x^w^y'   : go to right of special mark, copy "current word, left of cursor, paste
+    # '^xDF  ^y^hQ'   : paste a quoted copy of the "current word, left of cursor" ($2)
+    # '^a^xC^h'     : go to original cursor position and try to complete
+    # '^v^a'                : add the ^A mark we just deleted back; had to remove it to do completion
+    # '^xDF '           : go to end of current word; if word was '', the ^A mark is necessary
+    # '^a^xC^h^x^x '  : go back to the ^A mark, remove it, go back again, and set a mark
+    # '^a^x^xQ'           : quote from the beginning of the line to the end of the current word ($1)
+    # '^a __fzf_complete ': go to beginning of line, set a mark, type func name
+    # '^b^xC^h^e'       : go back to ^B mark and delete it; evaluate
+    # '^a^xC^h'         : __fzf_complete adds a mark indicating where the cursor needs to be
+    bind -m '^I'='^v^a^xD F^w^y ^y^x^x^xC^h^x^xQ^v^b^a^xC B^x^x^w^y^xDF  ^y^hQ^a^xC^h^v^a^xDF ^a^xC^h^x^x ^a^x^xQ^a __fzf_complete ^b^xC^h^e^a^xC^h'
+fi

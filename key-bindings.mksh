@@ -1,124 +1,95 @@
 # Key bindings
 # ------------
 
-export FZF_KEY_BINDINGS_PATH="$_"
-
-__mksh_escape() {
-    print -- "$1" | sed --posix -e 's/[] '"'"'#\"(){}$&*;<>?`|~[]/\\&/g' -e "s/\t/$'\\\t'/g"
-}
-
-__fzf_select__() {
-  local cmd="${FZF_CTRL_T_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) -prune \
-    -o -type f -print \
-    -o -type d -print \
-    -o -type l -print \
-  2> /dev/null | cut -b3-"}"
-  eval "$cmd" \
-      | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_CTRL_T_OPTS" fzf -m "$@" \
-      | while read -r item; do
-  __mksh_escape "$item"
-  done
-  print
-}
+fzf_mksh_abs="$(readlink -f $_)"
+fzf_mksh_dir="$(dirname $fzf_mksh_abs)"
+. "$fzf_mksh_dir/utils.mksh"
+unset fzf_mksh_abs fzf_mksh_dir
 
 if [[ $- = *i* ]]; then
+# >> 
 
-__fzf_use_tmux__() {
-  [ -n "$TMUX_PANE" ] && [ "${FZF_TMUX:-0}" != 0 ] && [ ${LINES:-40} -gt 15 ]
+function __fzf_select {
+    local cmd
+    cmd="${FZF_CTRL_T_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) \
+        -prune \
+        -o -type f -print \
+        -o -type d -print \
+        -o -type l -print \
+    2> /dev/null | cut -b3-"}"
+    eval "$cmd" \
+        | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS --reverse --bind=ctrl-z:ignore $FZF_CTRL_T_OPTS -m" $(__fzf_cmd) "$@" \
+        | while read -r item; do
+            print -nr -- "$(__mksh_escape "$item") "
+        done
 }
 
-__fzfcmd() {
-  __fzf_use_tmux__ &&
-    echo "fzf-tmux -d${FZF_TMUX_HEIGHT:-40%}" || echo "fzf"
+function __fzf_cd {
+    local cmd dir
+    cmd="${FZF_ALT_C_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) \
+        -prune \
+        -o -type d -print \
+    2> /dev/null | cut -b3-"}"
+    dir=$(
+        eval "$cmd" \
+            | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS --reverse --bind=ctrl-z:ignore $FZF_ALT_C_OPTS +m" $(__fzf_cmd)
+    ) \
+        && print -nr -- "cd $(__mksh_escape "$dir")"
 }
 
-__fzf_select_tmux__() {
-  local height
-  height=${FZF_TMUX_HEIGHT:-40%}
-  if print $height | grep -Eq %$; then
-    height="-p ${height%\%}"
-  else
-    height="-l $height"
-  fi
- tmux split-window $height "cd $(__mksh_escape "$PWD");             \
-       FZF_DEFAULT_OPTS=$(__mksh_escape "$FZF_DEFAULT_OPTS")        \
-                   PATH=$(__mksh_escape "$PATH")                    \
-     FZF_CTRL_T_COMMAND=$(__mksh_escape "$FZF_CTRL_T_COMMAND")      \
-        FZF_CTRL_T_OPTS=$(__mksh_escape "$FZF_CTRL_T_OPTS")         \
-  FZF_KEY_BINDINGS_PATH=$(__mksh_escape "$FZF_KEY_BINDINGS_PATH")   \
-  mksh -c '\
-    source \"${FZF_KEY_BINDINGS_PATH}\";        \
-    RESULT=\"\$(__fzf_select__ --no-height)\";  \
-    tmux setb    -b fzf \"\$RESULT\" \\;        \
-         pasteb  -b fzf -t $TMUX_PANE \\; \\    \
-         deleteb -b fzf || tmux send-keys -t $TMUX_PANE \"\$RESULT\"'"
+function __fzf_history {
+    local line cmd
+    line=$(
+        history 1 \
+            | sed '/^[0-9]/ s/^/\x00/; s/^	//' \
+            | tr '\n' $'\x01' \
+            | sed -z 's/\x01$//g; s/\x01/^J\x01/g' \
+            | grep -z -v "^[0-9]*\s*$" \
+            | LC_ALL=C sort -z -k2 -k1,1nr \
+            | uniq -z -f 1 \
+            | LC_ALL=C sort -z -nr \
+            | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS -n2..,.. --tiebreak=index --bind=ctrl-r:toggle-sort,ctrl-z:ignore $FZF_CTRL_R_OPTS +m --read0" $(__fzf_cmd) \
+    ) \
+        && cmd=$(print -nr -- "$line" | sed 's/^ *\([0-9]*\)	//; s/\^J\x01/\x0A/g') \
+        && print -nr "$cmd"
 }
-
-__fzf_cd__() {
-  local cmd dir
-  cmd="${FZF_ALT_C_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) -prune -o -type d -print  2> /dev/null | cut -b3-"}"
-  dir=$(eval "$cmd" | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_ALT_C_OPTS" $(__fzfcmd) +m) && print "cd $(__mksh_escape "$dir")"
-}
-
-__fzf_history__() (
-  local line cmd
-  line=$(
-    HISTTIMEFORMAT= history 1 |
-                        sort -k 2  -k 1,1nr | uniq -f 1 | sort -n |
-                        rg -v "FZFTMP" | rg -v "^[0-9]+\s*$" | rg -v "history" |
-    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS --tac --sync -n2..,.. --tiebreak=index --bind=ctrl-r:toggle-sort $FZF_CTRL_R_OPTS +m" $(__fzfcmd) |
-    command grep '^ *[0-9]') &&
-    cmd=$(print "$line" | sed 's/^ *\([0-9]*\)	//') &&
-    print -n "$cmd"
-)
 
 if [[ ! -o vi ]]; then
-  # Required to refresh the prompt after fzf
+    # CTRL-T - Paste the selected file path into the command line
+    bind -m '^t'=' __fzf_select^e'
 
-  # CTRL-T - Paste the selected file path into the command line
-  if __fzf_use_tmux__; then
-    bind -m '^t'=' $(__fzf_select_tmux__)^e^a^e'
-  else
-    bind -m '^t'=' $(__fzf_select__)^e^a^e'
-  fi
+    # CTRL-R - Paste the selected command from history into the command line
+    bind -m '^r'='^u__fzf_history^e'
 
-  # CTRL-R - Paste the selected command from history into the command line
-  bind -m '^r'='^u__fzf_history__^e^a^e'
-
-  # ALT-C - cd into the selected directory
-  bind -m 'c'='^u__fzf_cd__^e^a^e^m'
+    # ALT-C - cd into the selected directory
+    bind -m 'c'='^u__fzf_cd^e^m'
 else
-  # We'd usually use "\e" to enter vi-movement-mode so we can do our magic,
-  # but this incurs a very noticeable delay of a half second or so,
-  # because many other commands start with "\e".
-  # Instead, we bind an unused key, "\C-x\C-a",
-  # to also enter vi-movement-mode,
-  # and then use that thereafter.
-  # (We imagine that "\C-x\C-a" is relatively unlikely to be in use.)
-  bind '"\C-x\C-a": vi-movement-mode'
+    # We'd usually use "\e" to enter vi-movement-mode so we can do our magic,
+    # but this incurs a very noticeable delay of a half second or so,
+    # because many other commands start with "\e".
+    # Instead, we bind an unused key, "\C-x\C-a",
+    # to also enter vi-movement-mode,
+    # and then use that thereafter.
+    # (We imagine that "\C-x\C-a" is relatively unlikely to be in use.)
+    bind '"\C-x\C-a": vi-movement-mode'
 
-  bind '"\C-x\C-e": shell-expand-line'
-  bind '"\C-x\C-r": redraw-current-line'
-  bind '"\C-x^": history-expand-line'
+    bind '"\C-x\C-e": shell-expand-line'
+    bind '"\C-x\C-r": redraw-current-line'
+    bind '"\C-x^": history-expand-line'
 
-  # CTRL-T - Paste the selected file path into the command line
-  # - FIXME: Selected items are attached to the end regardless of cursor position
-  if __fzf_use_tmux__; then
-    bind '"\C-t": "\C-x\C-a$a \C-x\C-addi$(__fzf_select_tmux__)\C-x\C-e\C-x\C-a0P$xa"'
-  else
+    # CTRL-T - Paste the selected file path into the command line
+    # - FIXME: Selected items are attached to the end regardless of cursor position
     bind '"\C-t": "\C-x\C-a$a \C-x\C-addi$(__fzf_select__)\C-x\C-e\C-x\C-a0Px$a \C-x\C-r\C-x\C-axa "'
-  fi
-  bind -m vi-command '"\C-t": "i\C-t"'
+    bind -m vi-command '"\C-t": "i\C-t"'
 
-  # CTRL-R - Paste the selected command from history into the command line
-  bind '"\C-r": "\C-x\C-addi$(__fzf_history__)\C-x\C-e\C-x^\C-x\C-a$a\C-x\C-r"'
-  bind -m vi-command '"\C-r": "i\C-r"'
+    # CTRL-R - Paste the selected command from history into the command line
+    bind '"\C-r": "\C-x\C-addi$(__fzf_history__)\C-x\C-e\C-x^\C-x\C-a$a\C-x\C-r"'
+    bind -m vi-command '"\C-r": "i\C-r"'
 
-  # ALT-C - cd into the selected directory
-  bind '"\ec": "\C-x\C-addi$(__fzf_cd__)\C-x\C-e\C-x\C-r\C-m"'
-  bind -m vi-command '"\ec": "ddi$(__fzf_cd__)\C-x\C-e\C-x\C-r\C-m"'
+    # ALT-C - cd into the selected directory
+    bind '"\ec": "\C-x\C-addi$(__fzf_cd__)\C-x\C-e\C-x\C-r\C-m"'
+    bind -m vi-command '"\ec": "ddi$(__fzf_cd__)\C-x\C-e\C-x\C-r\C-m"'
 fi
 
-unset -v __use_tmux
-
+# <<
 fi
