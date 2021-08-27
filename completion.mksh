@@ -78,13 +78,17 @@ function __fzf_complete {
     else
         local sel
         local res
+        local fzf_prompt_query_args
+        fzf_prompt_query_args="--prompt=\"${FZF_COMPLETION_PROMPT_CHAR:->} $1\""
         sel=$(__fzf_get_completion_candidates "${comp[@]}")
         if [[ "$sel" = '' ]]; then
             print -rn -- "${1%${comp_y}}$2$3"
         else
+            local fzf_compl_args
+            fzf_compl_args="--reverse --bind=ctrl-z:ignore --no-info -0 -1 +m"
             res=$(
                 print -n "$sel" |
-                    FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --bind=ctrl-z:ignore --no-info --prompt=\"› $1\" -0 -1 +m" $(__fzf_cmd)
+                    FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS $fzf_compl_args $fzf_prompt_query_args" $(__fzf_cmd)
             )
             if [[ $res = *[![:space:]]* ]]; then
                 print -rn -- "${1%${comp_y##*/}}$(__mksh_escape "$res")"
