@@ -7,14 +7,16 @@
 
 ## Installation
 
+You'll need mksh R53a or later for key-bindings support (requires the `evaluate-region` editing command), and a current development snapshot for tab completion (requires a functional `quote-region` editing command).
+
+Any reasonably modern version of `fzf` will do.
+
 1. Clone this repo wherever you like, and optionally copy or symlink the `completion.mksh` and `key-bindings.mksh` files to any location of your choice. (I have mine symlinked at `~/.fzf/shell/`, which is where the analogous bash, zsh, and fish files were placed when I first installed `fzf` through the provided directions.)
 2. Source the files in your current shell, or add them to your `~/.mkshrc` (what you write is the same either way). The first provides the three key-bindings, and the second provides tab completion. You can pick just one or the other if you like:
 ```sh
 . /path/to/key-bindings.mksh
 . /path/to/completion.mksh
 ```
-
- 
 3. Set any of the fzf-specific environment variables that you'd like (see the `fzf` README [here](https://github.com/junegunn/fzf#environment-variables) and [here](https://github.com/junegunn/fzf#key-bindings-for-command-line)). The following are respected for now:
 ```sh
 $FZF_DEFAULT_OPTS
@@ -27,7 +29,7 @@ $FZF_ALT_C_COMMAND
 $FZF_ALT_C_OPTS
 $FZF_CTRL_R_OPTS
 ```
-4. In the shell where these files are sourced, press `CTRL-T`, `ALT-C`, `CTRL-R`, or `<TAB>` to your heart's content! All four key bindings are already made for you in the relevant files.
+4. In the shell where these files are sourced, press `CTRL-T`, `ALT-C`, `CTRL-R`, or `<TAB>` to your heart's content! All four key-bindings are already made for you in the relevant files.
 
 ## Details
 
