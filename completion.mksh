@@ -1,11 +1,9 @@
-#!/bin/mksh
-
-#TODO:
+# TODO:
 #  - something is up with escaping/quoting and the glob to get candidates
 #    ls Tournament\ Machu/test<__fzf_complete> -> nothing, should be test.txt^ntest2.txt
 #  - ./ at beginning of line (i.e. for the first word)
 #
-#CASES:
+# CASES:
 #  - {unambig_complete, ambig_complete, no_complete}            x 
 #    {start_of_word, middle_of_word, end_of_word, empty_word}   x
 #    {first_word, middle_word, last_word}
@@ -13,6 +11,9 @@
 #  - spaces in various parts of input, as well as returned text
 #  - "./" as first word (should match files, never commands)
 #  - "$(" or "`" before cursor (should match commands, never files)
+#  - other symbols: ', ", >, <, (, ), ./, shell syntax..., possibly &, etc.
+#    - mksh's completion is kinda broken from within quotes...
+#  - globbing -- handle it all!
 
 fzf_mksh_abs="$(readlink -f $_)"
 fzf_mksh_dir="$(dirname $fzf_mksh_abs)"
@@ -23,6 +24,7 @@ function __fzf_get_completion_candidates {
     local args
     set -A args -- "$@"
     local matches
+    # file completion
     if [ ${#args[@]} -gt 1 ]; then
         last_arg="${args[${#args[@]}-1]}"
         if [[ $last_arg = *[*?]* ]]; then
@@ -39,6 +41,7 @@ function __fzf_get_completion_candidates {
                 fi
             fi
         done
+    # command completion
     elif [ "${#args[@]}" -eq 1 ] || [ "${#args[@]}" -eq 0 ]; then
         local paths
         set -o noglob; IFS=:; set -A paths -- $PATH; IFS=$' \t\n'; set +o noglob
@@ -65,7 +68,9 @@ function __fzf_complete {
     fi
     curr_0="$2"
     curr_1="$3"
+    # comp_y is the current word post-completion
     comp_y="${comp[${#comp[@]}-1]}"
+    # comp_n is the current word sans-completion
     comp_n="${curr_0}${curr_1}"
     if [ ${#comp_y} -ne ${#comp_n} ]; then
         print -r -- "$1"

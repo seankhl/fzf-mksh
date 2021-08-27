@@ -1,6 +1,3 @@
-# Key bindings
-# ------------
-
 fzf_mksh_abs="$(readlink -f $_)"
 fzf_mksh_dir="$(dirname $fzf_mksh_abs)"
 . "$fzf_mksh_dir/utils.mksh"
