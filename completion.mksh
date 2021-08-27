@@ -27,6 +27,7 @@ function __fzf_get_completion_candidates {
     # file completion
     if [ ${#args[@]} -gt 1 ]; then
         last_arg="${args[${#args[@]}-1]}"
+        set +o markdirs
         if [[ $last_arg = *[*?]* ]]; then
             eval "set -A matches -- $last_arg"
         else
@@ -35,9 +36,9 @@ function __fzf_get_completion_candidates {
         for match in "${matches[@]}"; do
             if [[ "${match}" != "$last_arg*" ]]; then
                 if [[ -d "${match}" ]]; then
-                    print -r -- "${match}/"
+                    print -r -- "${match##*/}/"
                 else
-                    print -r -- "${match}"
+                    print -r -- "${match##*/}"
                 fi
             fi
         done
@@ -79,16 +80,14 @@ function __fzf_complete {
         local res
         sel=$(__fzf_get_completion_candidates "${comp[@]}")
         if [[ "$sel" = '' ]]; then
-            print -rn -- "${1%${comp_y}}"
-            print -r -- "$2$3"
+            print -rn -- "${1%${comp_y}}$2$3"
         else
             res=$(
                 print -n "$sel" |
                     FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --reverse --bind=ctrl-z:ignore --no-info --prompt=\"› $1\" -0 -1 +m" $(__fzf_cmd)
             )
             if [[ $res = *[![:space:]]* ]]; then
-                print -rn -- "${1%${comp_y}}"
-                print -rn -- $(__mksh_escape "$res")
+                print -rn -- "${1%${comp_y##*/}}$(__mksh_escape "$res")"
                 if [[ ! "${res: -1}" = '/' ]]; then
                     print -rn -- ' '
                 fi
