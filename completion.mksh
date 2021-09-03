@@ -79,7 +79,16 @@ function __fzf_complete {
         local sel
         local res
         local fzf_prompt_query_args
-        fzf_prompt_query_args="--prompt=\"${FZF_COMPLETION_PROMPT_CHAR:->} $1\""
+        if [ -n "$FZF_COMPLETE_USE_QUERY" ] && [ "$FZF_COMPLETE_USE_QUERY" -ne 0 ]; then
+            # allows for case-insensitive searching via fzf; search dir for all files/folders, and add a query
+            local comp_lastw_stem
+            comp_lastw_stem="${comp_y##*/}"
+            comp[${#comp[@]}-1]="${comp_y%${comp_lastw_stem}}"
+            fzf_prompt_query_args="--prompt=\"${FZF_COMPLETION_PROMPT_CHAR:->} ${1%$comp_lastw_stem}\" -i -q \"^$comp_lastw_stem\""
+        else
+            # o/w, we just glob against the whole string and only return those matches
+            fzf_prompt_query_args="--prompt=\"${FZF_COMPLETION_PROMPT_CHAR:->} $1\""
+        fi
         sel=$(__fzf_get_completion_candidates "${comp[@]}")
         if [[ "$sel" = '' ]]; then
             print -rn -- "${1%${comp_y}}$2$3"
