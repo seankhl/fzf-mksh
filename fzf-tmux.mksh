@@ -3,7 +3,7 @@
 # usage: fzf-tmux [LAYOUT OPTIONS] [--] [FZF OPTIONS]
 
 fail() {
-  >&2 echo "$1"
+  echo >&2 "$1"
   exit 2
 }
 
@@ -20,7 +20,7 @@ term=""
 [[ -n "$COLUMNS" ]] && columns=$COLUMNS || columns=$(tput cols) || columns=$(tmux display-message -p "#{pane_width}")
 
 help() {
-  >&2 echo 'usage: fzf-tmux [LAYOUT OPTIONS] [--] [FZF OPTIONS]
+  echo >&2 'usage: fzf-tmux [LAYOUT OPTIONS] [--] [FZF OPTIONS]
 
   LAYOUT OPTIONS:
     (default layout: -d 50%)
@@ -45,66 +45,66 @@ while [[ $# -gt 0 ]]; do
   arg="$1"
   shift
   [[ -z "$skip" ]] && case "$arg" in
-    -)
-      term=1
-      ;;
-    --help)
-      help
-      ;;
-    --version)
-      echo "fzf-tmux (with fzf $("$fzf" --version))"
-      exit
-      ;;
-    -p*|-w*|-h*|-x*|-y*|-d*|-u*|-r*|-l*)
-      if [[ "$arg" = -@([pwhxy])* ]]; then
-        [[ "$opt" = *'-K -E'* ]] || opt="-K -E"
-      elif [[ "$arg" = ?@([lr])* ]]; then
-        opt="-h"
-        if [[ "$arg" = ?'l'* ]]; then
-          opt="$opt -b"
-        fi
-      else
-        opt=""
-        if [[ "$arg" = ?'u'* ]]; then
-          opt="$opt -b"
-        fi
+  -)
+    term=1
+    ;;
+  --help)
+    help
+    ;;
+  --version)
+    echo "fzf-tmux (with fzf $("$fzf" --version))"
+    exit
+    ;;
+  -p* | -w* | -h* | -x* | -y* | -d* | -u* | -r* | -l*)
+    if [[ "$arg" = -@([pwhxy])* ]]; then
+      [[ "$opt" = *'-K -E'* ]] || opt="-K -E"
+    elif [[ "$arg" = ?@([lr])* ]]; then
+      opt="-h"
+      if [[ "$arg" = ?'l'* ]]; then
+        opt="$opt -b"
       fi
-      if [[ ${#arg} -gt 2 ]]; then
-        size="${arg:2}"
-      else
-        if [[ "$1" = +([0-9%,]) ]] || [[ "$1" = [[:upper:]] ]]; then
-          size="$1"
-          shift
-        else
-          continue
-        fi
+    else
+      opt=""
+      if [[ "$arg" = ?'u'* ]]; then
+        opt="$opt -b"
       fi
-      if [[ "$arg" = '-p'* ]]; then
-        if [[ -n "$size" ]]; then
-          w=${size%%,*}
-          h=${size##*,}
-          opt="$opt -w$w -h$h"
-        fi
-      elif [[ "$arg" = -@([whxy])* ]]; then
-        opt="$opt ${arg:0:2}$size"
-      elif [[ "$size" = *'%' ]]; then
-        size=${size:0:((${#size}-1))}
-        opt="$opt -p $size"
+    fi
+    if [[ ${#arg} -gt 2 ]]; then
+      size="${arg:2}"
+    else
+      if [[ "$1" = +([0-9%,]) ]] || [[ "$1" = [[:upper:]] ]]; then
+        size="$1"
+        shift
       else
-        opt="$opt -l $size"
+        continue
       fi
-      ;;
-    --)
-      # "--" can be used to separate fzf-tmux options from fzf options to
-      # avoid conflicts
-      skip=1
-      tmux_args=("${args[@]}")
-      args=()
-      continue
-      ;;
-    *)
-      args+=("$arg")
-      ;;
+    fi
+    if [[ "$arg" = '-p'* ]]; then
+      if [[ -n "$size" ]]; then
+        w=${size%%,*}
+        h=${size##*,}
+        opt="$opt -w$w -h$h"
+      fi
+    elif [[ "$arg" = -@([whxy])* ]]; then
+      opt="$opt ${arg:0:2}$size"
+    elif [[ "$size" = *'%' ]]; then
+      size=${size:0:((${#size} - 1))}
+      opt="$opt -p $size"
+    else
+      opt="$opt -l $size"
+    fi
+    ;;
+  --)
+    # "--" can be used to separate fzf-tmux options from fzf options to
+    # avoid conflicts
+    skip=1
+    tmux_args=("${args[@]}")
+    args=()
+    continue
+    ;;
+  *)
+    args+=("$arg")
+    ;;
   esac
   [[ -n "$skip" ]] && args+=("$arg")
 done
@@ -133,7 +133,7 @@ argsf="${TMPDIR:-/tmp}/fzf-args-$id"
 fifo1="${TMPDIR:-/tmp}/fzf-fifo1-$id"
 fifo2="${TMPDIR:-/tmp}/fzf-fifo2-$id"
 fifo3="${TMPDIR:-/tmp}/fzf-fifo3-$id"
-tmux_win_opts=( $(tmux show-window-options remain-on-exit \; show-window-options synchronize-panes | sed '/ off/d; s/^/set-window-option /; s/$/ \\;/') )
+tmux_win_opts=($(tmux show-window-options remain-on-exit \; show-window-options synchronize-panes | sed '/ off/d; s/^/set-window-option /; s/$/ \\;/'))
 cleanup() {
   \rm -f $argsf $fifo1 $fifo2 $fifo3
 
@@ -161,7 +161,7 @@ trap 'cleanup' EXIT
 
 envs="export TERM=$TERM "
 [[ "$opt" = *'-K -E'* ]] && FZF_DEFAULT_OPTS="--margin 0,1 $FZF_DEFAULT_OPTS"
-[[ -n "$FZF_DEFAULT_OPTS"    ]] && envs="$envs FZF_DEFAULT_OPTS=$(printf %q "$FZF_DEFAULT_OPTS")"
+[[ -n "$FZF_DEFAULT_OPTS" ]] && envs="$envs FZF_DEFAULT_OPTS=$(printf %q "$FZF_DEFAULT_OPTS")"
 [[ -n "$FZF_DEFAULT_COMMAND" ]] && envs="$envs FZF_DEFAULT_COMMAND=$(printf %q "$FZF_DEFAULT_COMMAND")"
 echo "$envs;" > "$argsf"
 
@@ -172,26 +172,15 @@ pppid=$$
 echo -n "trap 'kill -SIGUSR1 -$pppid' EXIT SIGINT SIGTERM;" >> $argsf
 close="; trap - EXIT SIGINT SIGTERM"
 
-# echo "$TMUX"
-# echo "$fzf"
-# echo "$opt"
-# echo "$opts"
-# echo "$close"
-# echo "{tmux_args[@]}"
-# exit
-
-export TMUX=$(cut -d , -f 1,2 <<< "$TMUX")
+export TMUX=$(print "$TMUX" | cut -d , -f 1,2)
 mkfifo -m o+w $fifo2
 if [[ "$opt" = *'-K -E'* ]]; then
   if [[ -n "$term" ]] || [[ -t 0 ]]; then
-    cat <<< "\"$fzf\" $opts > $fifo2; out=\$? $close; exit \$out" >> $argsf
+    print -- "\"$fzf\" $opts > $fifo2; out=\$? $close; exit \$out" >> $argsf
   else
     # use a named pipe to get the stdin to the command
     mkfifo $fifo1
-    cat |&
-    print -p "$(cat <&0)"
-    exec 3>&p; exec 3>&-
-    cat <<< "\"$fzf\" $opts < $fifo1 > $fifo2; out=\$? $close; exit \$out" >> $argsf
+    print -- "\"$fzf\" $opts < $fifo1 > $fifo2; out=\$? $close; exit \$out" >> $argsf
   fi
   # tmux dropped the support for `-K`, `-R` to popup command
   #   TODO: We can remove this once tmux 3.2 is released
@@ -201,9 +190,9 @@ if [[ "$opt" = *'-K -E'* ]]; then
     opt="${opt} -R"
   fi
   tmux popup -d "$PWD" $opt "${tmux_args[@]}" "mksh $argsf" > /dev/null 2>&1 &
-
-  if [[ ! -n "$term" ]] && [[ ! -t 0 ]]; then
-    cat > $fifo1 <&p &
+  if [[ -z "$term" ]] && [[ ! -t 0 ]]; then
+    exec 3<&0
+    cat > $fifo1 <&3 &
   fi
   cat $fifo2
   exit $?
@@ -211,20 +200,18 @@ fi
 
 mkfifo -m o+w $fifo3
 if [[ -n "$term" ]] || [[ -t 0 ]]; then
-  cat <<< "\"$fzf\" $opts > $fifo2; print \$? > $fifo3 $close" >> $argsf
+  print -- "\"$fzf\" $opts > $fifo2; print \$? > $fifo3 $close" >> $argsf
 else
   mkfifo $fifo1
-  cat |&
-  print -p "$(cat <&0)"
-  exec 3>&p; exec 3>&-
-  cat <<< "\"$fzf\" $opts < $fifo1 > $fifo2; print \$? > $fifo3 $close" >> $argsf
+  print -- "\"$fzf\" $opts < $fifo1 > $fifo2; print \$? > $fifo3 $close" >> $argsf
 fi
 tmux set-window-option synchronize-panes off \;\
   set-window-option remain-on-exit off \;\
-  split-window $opt -c "$PWD" "${tmux_args[@]}" "mksh -c 'exec -a fzf mksh $argsf'" \
+  split-window -c "$PWD" $opt "${tmux_args[@]}" "mksh -c 'exec -a fzf mksh $argsf'" \
   > /dev/null 2>&1
-if [[ ! -n "$term" ]] && [[ ! -t 0 ]]; then
-  cat > $fifo1 <&p &
+if [[ -z "$term" ]] && [[ ! -t 0 ]]; then
+  exec 3<&0
+  cat > $fifo1 <&3 &
 fi
 cat $fifo2
 exit "$(cat $fifo3)"
